@@ -10,14 +10,17 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-type FaidxTest struct{}
+type FaidxTest struct {
+	fai *faidx.Faidx
+}
 
 var _ = Suite(&FaidxTest{})
 
-func (s *FaidxTest) TestNew(c *C) {
+func (s *FaidxTest) SetUpTest(c *C) {
 	fai, err := faidx.New("test.fa")
 	c.Assert(err, IsNil)
 	c.Assert(fai, Not(IsNil))
+	s.fai = fai
 }
 
 var faiTests = []struct {
@@ -35,12 +38,26 @@ var faiTests = []struct {
 	{"g", 4996, 5000, "TTTGG"},
 }
 
-func (s *FaidxTest) TestSeqs(c *C) {
-	fai, err := faidx.New("test.fa")
-	c.Assert(err, IsNil)
-
+func (s *FaidxTest) TestGet(c *C) {
 	for _, test := range faiTests {
-		seq, err := fai.Get(test.chrom, test.start, test.end)
+		seq, err := s.fai.Get(test.chrom, test.start, test.end)
+		c.Assert(err, IsNil)
+		c.Assert(seq, Equals, test.expected)
+	}
+}
+
+func (s *FaidxTest) TestAt(c *C) {
+	for _, test := range faiTests {
+		seq, err := s.fai.At(test.chrom, test.start-1, test.end)
+		c.Assert(err, IsNil)
+		c.Assert(seq, Equals, test.expected)
+
+	}
+}
+
+func (s *FaidxTest) TestMAt(c *C) {
+	for _, test := range faiTests {
+		seq, err := s.fai.MAt(test.chrom, test.start-1, test.end)
 		c.Assert(err, IsNil)
 		c.Assert(seq, Equals, test.expected)
 

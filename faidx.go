@@ -8,11 +8,13 @@ import (
 	"os"
 
 	"github.com/biogo/biogo/io/seqio/fai"
+	"github.com/edsrzf/mmap-go"
 )
 
 type Faidx struct {
 	rdr   io.ReadSeeker
-	index fai.Index
+	Index fai.Index
+	mmap  mmap.MMap
 }
 
 var ErrorNoFai = errors.New("no fai for fasta")
@@ -42,17 +44,22 @@ func New(fasta string) (*Faidx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Faidx{rdr, idx}, nil
+
+	smap, err := mmap.Map(rdr, mmap.RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Faidx{rdr, idx, smap}, nil
 }
 
-// Get a positions and returns the string sequence. Start and end are 1-based.
+// Get takes a position and returns the string sequence. Start and end are 1-based.
 func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
-	idx, ok := f.index[chrom]
+	idx, ok := f.Index[chrom]
 	if !ok {
 		return "", fmt.Errorf("unknown sequence %s", chrom)
 	}
-
-	pstart, pend := idx.Position(start-1), idx.Position(end-1)+1
+	pstart, pend := position(idx, start-1), position(idx, end)
 	f.rdr.Seek(pstart, 0)
 	buf := make([]byte, pend-pstart)
 	_, err := f.rdr.Read(buf)
@@ -61,4 +68,49 @@ func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
 	}
 	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
 	return string(buf), nil
+}
+
+func position(r fai.Record, p int) int64 {
+	if p < 0 || r.Length < p {
+		panic("fai: index out of range")
+	}
+	return r.Start + int64(p/r.BasesPerLine*r.BytesPerLine+p%r.BasesPerLine)
+}
+
+// At takes a position and returns the string sequence. Start and end are 0-based.
+func (f *Faidx) At(chrom string, start int, end int) (string, error) {
+	idx, ok := f.Index[chrom]
+	if !ok {
+		return "", fmt.Errorf("unknown sequence %s", chrom)
+	}
+
+	pstart := position(idx, start)
+	pend := position(idx, end)
+	f.rdr.Seek(pstart, 0)
+	buf := make([]byte, pend-pstart)
+	_, err := f.rdr.Read(buf)
+	if err != nil {
+		return "", err
+	}
+	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
+	return string(buf), nil
+}
+
+// At takes a position and returns the string sequence. Start and end are 0-based.
+func (f *Faidx) MAt(chrom string, start int, end int) (string, error) {
+	idx, ok := f.Index[chrom]
+	if !ok {
+		return "", fmt.Errorf("unknown sequence %s", chrom)
+	}
+
+	pstart := position(idx, start)
+	pend := position(idx, end)
+	buf := f.mmap[pstart:pend]
+	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
+	return string(buf), nil
+}
+
+// Close the associated Reader.
+func (f *Faidx) Close() {
+	f.rdr.(io.Closer).Close()
 }
