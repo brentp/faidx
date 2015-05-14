@@ -113,4 +113,5 @@ func (f *Faidx) MAt(chrom string, start int, end int) (string, error) {
 // Close the associated Reader.
 func (f *Faidx) Close() {
 	f.rdr.(io.Closer).Close()
+	f.mmap.Unmap()
 }
