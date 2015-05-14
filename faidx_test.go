@@ -15,7 +15,7 @@ type FaidxTest struct{}
 var _ = Suite(&FaidxTest{})
 
 func (s *FaidxTest) TestNew(c *C) {
-	fai, err := faidx.New("ce.fa")
+	fai, err := faidx.New("test.fa")
 	c.Assert(err, IsNil)
 	c.Assert(fai, Not(IsNil))
 }
@@ -36,7 +36,7 @@ var faiTests = []struct {
 }
 
 func (s *FaidxTest) TestSeqs(c *C) {
-	fai, err := faidx.New("ce.fa")
+	fai, err := faidx.New("test.fa")
 	c.Assert(err, IsNil)
 
 	for _, test := range faiTests {
