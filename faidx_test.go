@@ -40,21 +40,14 @@ var faiTests = []struct {
 
 func (s *FaidxTest) TestGet(c *C) {
 	for _, test := range faiTests {
-		seq, err := s.fai.Get(test.chrom, test.start, test.end)
-		c.Assert(err, IsNil)
-		c.Assert(seq, Equals, test.expected)
-	}
-}
-
-func (s *FaidxTest) TestAt(c *C) {
-	for _, test := range faiTests {
-		seq, err := s.fai.At(test.chrom, test.start-1, test.end)
+		seq, err := s.fai.Get(test.chrom, test.start-1, test.end)
 		c.Assert(err, IsNil)
 		c.Assert(seq, Equals, test.expected)
 
 	}
 }
 
+/*
 func (s *FaidxTest) TestMAt(c *C) {
 	for _, test := range faiTests {
 		seq, err := s.fai.MAt(test.chrom, test.start-1, test.end)
@@ -62,4 +55,4 @@ func (s *FaidxTest) TestMAt(c *C) {
 		c.Assert(seq, Equals, test.expected)
 
 	}
-}
+}*/

@@ -53,23 +53,6 @@ func New(fasta string) (*Faidx, error) {
 	return &Faidx{rdr, idx, smap}, nil
 }
 
-// Get takes a position and returns the string sequence. Start and end are 1-based.
-func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
-	idx, ok := f.Index[chrom]
-	if !ok {
-		return "", fmt.Errorf("unknown sequence %s", chrom)
-	}
-	pstart, pend := position(idx, start-1), position(idx, end)
-	f.rdr.Seek(pstart, 0)
-	buf := make([]byte, pend-pstart)
-	_, err := f.rdr.Read(buf)
-	if err != nil {
-		return "", err
-	}
-	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
-	return string(buf), nil
-}
-
 func position(r fai.Record, p int) int64 {
 	if p < 0 || r.Length < p {
 		panic("fai: index out of range")
@@ -78,26 +61,7 @@ func position(r fai.Record, p int) int64 {
 }
 
 // At takes a position and returns the string sequence. Start and end are 0-based.
-func (f *Faidx) At(chrom string, start int, end int) (string, error) {
-	idx, ok := f.Index[chrom]
-	if !ok {
-		return "", fmt.Errorf("unknown sequence %s", chrom)
-	}
-
-	pstart := position(idx, start)
-	pend := position(idx, end)
-	f.rdr.Seek(pstart, 0)
-	buf := make([]byte, pend-pstart)
-	_, err := f.rdr.Read(buf)
-	if err != nil {
-		return "", err
-	}
-	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
-	return string(buf), nil
-}
-
-// At takes a position and returns the string sequence. Start and end are 0-based.
-func (f *Faidx) MAt(chrom string, start int, end int) (string, error) {
+func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
 	idx, ok := f.Index[chrom]
 	if !ok {
 		return "", fmt.Errorf("unknown sequence %s", chrom)
@@ -108,6 +72,17 @@ func (f *Faidx) MAt(chrom string, start int, end int) (string, error) {
 	buf := f.mmap[pstart:pend]
 	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
 	return string(buf), nil
+}
+
+// At takes a single point and returns the single base.
+func (f *Faidx) At(chrom string, pos int) (byte, error) {
+	idx, ok := f.Index[chrom]
+	if !ok {
+		return '*', fmt.Errorf("unknown sequence %s", chrom)
+	}
+
+	ppos := position(idx, pos)
+	return f.mmap[ppos], nil
 }
 
 // Close the associated Reader.
