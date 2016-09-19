@@ -47,6 +47,37 @@ func (s *FaidxTest) TestGet(c *C) {
 	}
 }
 
+func (s *FaidxTest) TestStats(c *C) {
+	st, err := s.fai.Stats("f", 4995, 5000)
+	c.Assert(err, IsNil)
+	c.Assert(st.Masked, Equals, 0.0)
+	c.Assert(st.CpG, Equals, 0.0)
+	c.Assert(st.GC, Equals, 0.6)
+
+	seq, err := s.fai.Get("a", 103-1, 110)
+	c.Assert(seq, Equals, "GCCTAAGC")
+	c.Assert(err, Equals, nil)
+
+	st, err = s.fai.Stats("a", 103-1, 110)
+	c.Assert(err, IsNil)
+	c.Assert(st.Masked, Equals, 0.0)
+	c.Assert(st.CpG, Equals, 0.0)
+	c.Assert(st.GC, Equals, float64(5)/float64(8))
+
+	st, err = s.fai.Stats("g", 4996-1, 5000)
+	c.Assert(err, IsNil)
+	c.Assert(st.Masked, Equals, 0.0)
+	c.Assert(st.CpG, Equals, 0.0)
+	c.Assert(st.GC, Equals, float64(2)/float64(5))
+
+	seq, err = s.fai.Get("k", 0, 9)
+	c.Assert(seq, Equals, "CGCGCGCGA")
+
+	st, err = s.fai.Stats("k", 0, 9)
+	c.Assert(st.CpG, Equals, float64(2*4)/float64(9))
+	c.Assert(err, IsNil)
+}
+
 /*
 func (s *FaidxTest) TestMAt(c *C) {
 	for _, test := range faiTests {

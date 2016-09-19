@@ -11,12 +11,14 @@ import (
 	"github.com/edsrzf/mmap-go"
 )
 
+// Faidx is used to provide random access to the sequence data.
 type Faidx struct {
 	rdr   io.ReadSeeker
 	Index fai.Index
 	mmap  mmap.MMap
 }
 
+// ErrorNoFai is returned if the fasta doesn't have an associated .fai
 var ErrorNoFai = errors.New("no fai for fasta")
 
 func notExists(path string) error {
@@ -60,7 +62,7 @@ func position(r fai.Record, p int) int64 {
 	return r.Start + int64(p/r.BasesPerLine*r.BytesPerLine+p%r.BasesPerLine)
 }
 
-// At takes a position and returns the string sequence. Start and end are 0-based.
+// Get takes a position and returns the string sequence. Start and end are 0-based.
 func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
 	idx, ok := f.Index[chrom]
 	if !ok {
@@ -72,6 +74,67 @@ func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
 	buf := f.mmap[pstart:pend]
 	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
 	return string(buf), nil
+}
+
+type Stats struct {
+	// GC content fraction
+	GC float64
+	// CpG content fraction
+	CpG float64
+	// masked (lower-case fraction
+	Masked float64
+}
+
+// Stats returns the proportion of GC's (GgCc), the CpG content (Cc follow by Gg)
+// and the proportion of lower-case bases (masked).
+func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
+	// copied from cnvkit.
+	idx, ok := f.Index[chrom]
+	if !ok {
+		return Stats{}, fmt.Errorf("unknown sequence %s", chrom)
+	}
+	pstart := position(idx, start)
+	pend := position(idx, end)
+	oend := pend
+	if pend < int64(len(f.mmap)) {
+		oend++
+	}
+
+	var gcUp, gcLo, atUp, atLo, cpg int
+	buf := f.mmap[pstart:oend]
+	// handle end of seq
+	if oend == pend {
+		buf = append(buf, 'N')
+	}
+	for i, v := range buf {
+		// we added 1 to do the GC content...
+		if i == len(buf)-1 {
+			break
+		}
+		if v == 'G' || v == 'C' {
+			if v == 'C' && (buf[i+1] == 'G' || buf[i+1] == 'g') {
+				cpg++
+			}
+			gcUp++
+		} else if v == 'A' || v == 'T' {
+			atUp++
+		} else if v == 'g' || v == 'c' {
+			if v == 'c' && (buf[i+1] == 'G' || buf[i+1] == 'g') {
+				cpg++
+			}
+			gcLo++
+		} else if v == 'a' || v == 't' {
+			atLo++
+		}
+	}
+	tot := float64(gcUp + gcLo + atUp + atLo)
+	if tot == 0.0 {
+		return Stats{}, nil
+	}
+	return Stats{
+		GC:     float64(gcLo+gcUp) / tot,
+		Masked: float64(atLo+gcLo) / tot,
+		CpG:    float64(2*cpg) / tot}, nil
 }
 
 // At takes a single point and returns the single base.
