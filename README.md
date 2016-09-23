@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/brentp/faidx.svg?branch=master)](https://travis-ci.org/brentp/faidx)
+
 faidx reader for golang using biogo's io.seqio.fai
 
 ```golang
