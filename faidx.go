@@ -57,7 +57,7 @@ func New(fasta string) (*Faidx, error) {
 
 func position(r fai.Record, p int) int64 {
 	if p < 0 || r.Length < p {
-		panic("fai: index out of range")
+		panic(fmt.Sprintf("fai: index [%d] out of range", p))
 	}
 	return r.Start + int64(p/r.BasesPerLine*r.BytesPerLine+p%r.BasesPerLine)
 }
@@ -102,10 +102,6 @@ func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
 
 	var gcUp, gcLo, atUp, atLo, cpg int
 	buf := f.mmap[pstart:oend]
-	// handle end of seq
-	if oend == pend {
-		buf = append(buf, 'N')
-	}
 	for i, v := range buf {
 		// we added 1 to do the GC content...
 		if i == len(buf)-1 {

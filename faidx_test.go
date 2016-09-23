@@ -77,13 +77,3 @@ func (s *FaidxTest) TestStats(c *C) {
 	c.Assert(st.CpG, Equals, float64(2*4)/float64(9))
 	c.Assert(err, IsNil)
 }
-
-/*
-func (s *FaidxTest) TestMAt(c *C) {
-	for _, test := range faiTests {
-		seq, err := s.fai.MAt(test.chrom, test.start-1, test.end)
-		c.Assert(err, IsNil)
-		c.Assert(seq, Equals, test.expected)
-
-	}
-}*/
