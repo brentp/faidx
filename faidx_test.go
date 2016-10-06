@@ -77,3 +77,21 @@ func (s *FaidxTest) TestStats(c *C) {
 	c.Assert(st.CpG, Equals, float64(2*4)/float64(9))
 	c.Assert(err, IsNil)
 }
+
+func (s *FaidxTest) TestCpG(c *C) {
+	seq, err := s.fai.Get("k", 0, 2)
+	c.Assert(seq, Equals, "CG")
+	c.Assert(err, IsNil)
+	st, err := s.fai.Stats("k", 0, 2)
+	c.Assert(err, IsNil)
+	c.Assert(st.CpG, Equals, 1.0)
+
+	st, err = s.fai.Stats("k", 6, 9)
+	seq, err = s.fai.Get("k", 6, 9)
+	c.Assert(st.CpG, Equals, 2.0/3.0)
+
+	st, err = s.fai.Stats("k", 0, 1)
+	seq, err = s.fai.Get("k", 0, 1)
+	c.Assert(err, IsNil)
+	c.Assert(st.CpG, Equals, 1.0)
+}

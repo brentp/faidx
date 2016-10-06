@@ -76,6 +76,7 @@ func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
 	return string(buf), nil
 }
 
+// Stats hold sequenc information.
 type Stats struct {
 	// GC content fraction
 	GC float64
@@ -85,8 +86,16 @@ type Stats struct {
 	Masked float64
 }
 
+func min(a, b float64) float64 {
+	if b < a {
+		return b
+	}
+	return a
+}
+
 // Stats returns the proportion of GC's (GgCc), the CpG content (Cc follow by Gg)
 // and the proportion of lower-case bases (masked).
+// CpG will be 1.0 if the requested sequence is CGC and the base that follows is G
 func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
 	// copied from cnvkit.
 	idx, ok := f.Index[chrom]
@@ -130,7 +139,7 @@ func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
 	return Stats{
 		GC:     float64(gcLo+gcUp) / tot,
 		Masked: float64(atLo+gcLo) / tot,
-		CpG:    float64(2*cpg) / tot}, nil
+		CpG:    min(1.0, float64(2*cpg)/tot)}, nil
 }
 
 // At takes a single point and returns the single base.
