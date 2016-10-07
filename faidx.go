@@ -57,7 +57,7 @@ func New(fasta string) (*Faidx, error) {
 
 func position(r fai.Record, p int) int64 {
 	if p < 0 || r.Length < p {
-		panic(fmt.Sprintf("fai: index [%d] out of range", p))
+		panic(fmt.Sprintf("fai: index [%d] out of range in %s which has length: %d", p, r.Name, r.Length))
 	}
 	return r.Start + int64(p/r.BasesPerLine*r.BytesPerLine+p%r.BasesPerLine)
 }
