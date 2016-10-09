@@ -95,3 +95,40 @@ func (s *FaidxTest) TestCpG(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(st.CpG, Equals, 1.0)
 }
+
+func (s *FaidxTest) TestGC(c *C) {
+	st, serr := s.fai.Stats("k", 0, 9)
+	gc, gerr := s.fai.GC(&faidx.GcPosition{Chrom: "k", Start: 0, End: 9})
+	c.Assert(serr, IsNil)
+	c.Assert(gerr, IsNil)
+	c.Assert(st.GC, Equals, float64(gc)/9)
+}
+
+// We see the most benefit when the region is large and we're only incrementing a few bases.
+func BenchmarkGC(b *testing.B) {
+	fai, err := faidx.New("test.fa")
+	if err != nil {
+		panic(err)
+	}
+	for i := 0; i < b.N; i++ {
+		g := &faidx.GcPosition{Chrom: "a", Start: 0, End: 0}
+		for pos := 0; pos < 400000; pos += 1 {
+			g.Start, g.End = pos, pos+500
+			fai.GC(g)
+		}
+
+	}
+}
+
+func BenchmarkStats(b *testing.B) {
+	fai, err := faidx.New("test.fa")
+	if err != nil {
+		panic(err)
+	}
+	for i := 0; i < b.N; i++ {
+		for pos := 0; pos < 400000; pos += 1 {
+			fai.Stats("a", pos, pos+500)
+		}
+
+	}
+}

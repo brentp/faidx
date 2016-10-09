@@ -142,6 +142,60 @@ func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
 		CpG:    min(1.0, float64(2*cpg)/tot)}, nil
 }
 
+// GcPosition allows the user to specify the position and internally, faidx will
+// store information in it to speed GC calcs to adjacent regions. Useful for, when
+// we sweep along the genome 1 base at a time, but we want to know the GC content for
+// a window around each base.
+type GcPosition struct {
+	Chrom string
+	Start int
+	End   int
+
+	lastChrom string
+	lastStart int
+	lastEnd   int
+	lastCount int
+}
+
+// GC gets only the count of GC GC-content it can do the calculation quickly for
+// repeated calls marching to higher bases along the genome.
+func (f *Faidx) GC(pos *GcPosition) (int, error) {
+	// we can't use any info from the cache
+	idx, ok := f.Index[pos.Chrom]
+	if !ok {
+		return 0, fmt.Errorf("GC: unknown sequence %s", pos.Chrom)
+	}
+
+	if pos.lastStart > pos.Start || pos.Start >= pos.lastEnd || pos.lastEnd > pos.End || pos.Chrom != pos.lastChrom {
+		pos.lastChrom = pos.Chrom
+		pos.lastCount = 0
+		for i := position(idx, pos.Start); i < position(idx, pos.End); i++ {
+			if b := f.mmap[i]; b == 'G' || b == 'C' || b == 'c' || b == 'g' {
+				pos.lastCount++
+			}
+		}
+	} else {
+		/*
+		 ls -------------- le
+		       s----------------e
+		*/
+		for _, b := range f.mmap[position(idx, pos.lastStart):position(idx, pos.Start)] {
+			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
+				pos.lastCount--
+			}
+		}
+		for _, b := range f.mmap[position(idx, pos.lastEnd):position(idx, pos.End)] {
+			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
+				pos.lastCount++
+			}
+		}
+
+	}
+	pos.lastStart = pos.Start
+	pos.lastEnd = pos.End
+	return pos.lastCount, nil
+}
+
 // At takes a single point and returns the single base.
 func (f *Faidx) At(chrom string, pos int) (byte, error) {
 	idx, ok := f.Index[chrom]

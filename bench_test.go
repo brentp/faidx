@@ -39,14 +39,16 @@ func getFai() *faidx.Faidx {
 	return fai
 }
 
-func BenchmarkMmapRandom1(b *testing.B)    { benchmarkRandom(1, b, getFai()) }
-func BenchmarkMmapRandom10(b *testing.B)   { benchmarkRandom(10, b, getFai()) }
-func BenchmarkMmapRandom100(b *testing.B)  { benchmarkRandom(100, b, getFai()) }
-func BenchmarkMmapRandom500(b *testing.B)  { benchmarkRandom(500, b, getFai()) }
+//func BenchmarkMmapRandom1(b *testing.B) { benchmarkRandom(1, b, getFai()) }
+func BenchmarkMmapRandom10(b *testing.B) { benchmarkRandom(10, b, getFai()) }
+
+//func BenchmarkMmapRandom100(b *testing.B) { benchmarkRandom(100, b, getFai()) }
+//func BenchmarkMmapRandom500(b *testing.B)  { benchmarkRandom(500, b, getFai()) }
 func BenchmarkMmapRandom1000(b *testing.B) { benchmarkRandom(1000, b, getFai()) }
 
-func BenchmarkMmapSequential1(b *testing.B)    { benchmarkSequential(1, b, getFai()) }
-func BenchmarkMmapSequential10(b *testing.B)   { benchmarkSequential(10, b, getFai()) }
-func BenchmarkMmapSequential100(b *testing.B)  { benchmarkSequential(100, b, getFai()) }
-func BenchmarkMmapSequential500(b *testing.B)  { benchmarkSequential(500, b, getFai()) }
+//func BenchmarkMmapSequential1(b *testing.B) { benchmarkSequential(1, b, getFai()) }
+func BenchmarkMmapSequential10(b *testing.B) { benchmarkSequential(10, b, getFai()) }
+
+//func BenchmarkMmapSequential100(b *testing.B) { benchmarkSequential(100, b, getFai()) }
+//func BenchmarkMmapSequential500(b *testing.B)  { benchmarkSequential(500, b, getFai()) }
 func BenchmarkMmapSequential1000(b *testing.B) { benchmarkSequential(1000, b, getFai()) }
