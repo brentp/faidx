@@ -98,23 +98,51 @@ func (s *FaidxTest) TestCpG(c *C) {
 
 func (s *FaidxTest) TestGC(c *C) {
 	st, serr := s.fai.Stats("k", 0, 9)
-	gc, gerr := s.fai.GC(&faidx.GcPosition{Chrom: "k", Start: 0, End: 9})
+	gc, gerr := s.fai.Q(&faidx.FaPos{Chrom: "k", Start: 0, End: 9})
 	c.Assert(serr, IsNil)
 	c.Assert(gerr, IsNil)
 	c.Assert(st.GC, Equals, float64(gc)/9)
 }
 
+func (s *FaidxTest) TestDuplicity(c *C) {
+	p := &faidx.FaPos{Chrom: "k", Start: 0, End: 9}
+	p.As = 3
+	p.Gs = 3
+	p.Ts = 3
+	p.Cs = 3
+	c.Assert(p.Duplicity(), Equals, float32(0))
+
+	p = &faidx.FaPos{}
+	p.Cs = 3
+	c.Assert(p.Duplicity(), Equals, float32(1))
+
+	p.As = 2
+	p.Gs = 2
+	p.Ts = 27
+	p.Cs = 2
+	a := p.Duplicity()
+	p.Cs = 20
+	b := p.Duplicity()
+	c.Assert(a > b, Equals, true)
+
+}
+func (s *FaidxTest) TestDuplicity2(c *C) {
+	p := &faidx.FaPos{}
+	p.As, p.Cs = 3, 3
+	c.Assert(p.Duplicity(), Equals, float32(0.5))
+}
+
 // We see the most benefit when the region is large and we're only incrementing a few bases.
-func BenchmarkGC(b *testing.B) {
+func BenchmarkQ(b *testing.B) {
 	fai, err := faidx.New("test.fa")
 	if err != nil {
 		panic(err)
 	}
 	for i := 0; i < b.N; i++ {
-		g := &faidx.GcPosition{Chrom: "a", Start: 0, End: 0}
+		g := &faidx.FaPos{Chrom: "a", Start: 0, End: 0}
 		for pos := 0; pos < 400000; pos += 1 {
 			g.Start, g.End = pos, pos+500
-			fai.GC(g)
+			fai.Q(g)
 		}
 
 	}

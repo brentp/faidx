@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"github.com/biogo/biogo/io/seqio/fai"
@@ -142,11 +143,11 @@ func (f *Faidx) Stats(chrom string, start int, end int) (Stats, error) {
 		CpG:    min(1.0, float64(2*cpg)/tot)}, nil
 }
 
-// GcPosition allows the user to specify the position and internally, faidx will
+// FaPos allows the user to specify the position and internally, faidx will
 // store information in it to speed GC calcs to adjacent regions. Useful for, when
 // we sweep along the genome 1 base at a time, but we want to know the GC content for
 // a window around each base.
-type GcPosition struct {
+type FaPos struct {
 	Chrom string
 	Start int
 	End   int
@@ -154,12 +155,52 @@ type GcPosition struct {
 	lastChrom string
 	lastStart int
 	lastEnd   int
-	lastCount uint32
+	As        uint32
+	Cs        uint32
+	Gs        uint32
+	Ts        uint32
 }
 
-// GC gets only the count of GC GC-content it can do the calculation quickly for
-// repeated calls marching to higher bases along the genome.
-func (f *Faidx) GC(pos *GcPosition) (uint32, error) {
+// Duplicity returns a scaled entropy value of the counts of each base in p.
+// Values approaching 1 are repetitive sequence values close to 0 have a more
+// even distribution among the bases. This is likely to be called after `Q()`
+// which populates the base-counts.
+func (p *FaPos) Duplicity() float32 {
+	n := float64(p.As + p.Cs + p.Gs + p.Ts)
+	var s float64
+	k := 0
+
+	if p.As > 0 {
+		s = float64(p.As) / n * math.Log(float64(p.As)/n)
+		k++
+	}
+	if p.Cs > 0 {
+		s += float64(p.Cs) / n * math.Log(float64(p.Cs)/n)
+		k++
+	}
+	if p.Gs > 0 {
+		s += float64(p.Gs) / n * math.Log(float64(p.Gs)/n)
+		k++
+	}
+	if p.Ts > 0 {
+		s += float64(p.Ts) / n * math.Log(float64(p.Ts)/n)
+		k++
+	}
+	if k == 0 {
+		return 0
+	}
+	if s == 0 {
+		return 1.0
+	}
+
+	return float32(1 + s/math.Log(4))
+}
+
+// Q returns only the count of GCs it can do the calculation quickly for
+// repeated calls marching to higher bases along the genome. It also
+// updates the number of As, Cs, Ts, and Gs in FaPosition so the user
+// can then calculate Entropy or use Duplicity above.
+func (f *Faidx) Q(pos *FaPos) (uint32, error) {
 	// we can't use any info from the cache
 	idx, ok := f.Index[pos.Chrom]
 	if !ok {
@@ -168,10 +209,17 @@ func (f *Faidx) GC(pos *GcPosition) (uint32, error) {
 
 	if pos.lastStart > pos.Start || pos.Start >= pos.lastEnd || pos.lastEnd > pos.End || pos.Chrom != pos.lastChrom {
 		pos.lastChrom = pos.Chrom
-		pos.lastCount = 0
+		pos.As, pos.Cs, pos.Gs, pos.Ts = 0, 0, 0, 0
 		for _, b := range f.mmap[position(idx, pos.Start):position(idx, pos.End)] {
-			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
-				pos.lastCount++
+			switch b {
+			case 'G', 'g':
+				pos.Gs++
+			case 'C', 'c':
+				pos.Cs++
+			case 'A', 'a':
+				pos.As++
+			case 'T', 't':
+				pos.Ts++
 			}
 		}
 	} else {
@@ -180,20 +228,45 @@ func (f *Faidx) GC(pos *GcPosition) (uint32, error) {
 		       s----------------e
 		*/
 		for _, b := range f.mmap[position(idx, pos.lastStart):position(idx, pos.Start)] {
-			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
-				pos.lastCount--
+			switch b {
+			case 'G', 'g':
+				pos.Gs--
+			case 'C', 'c':
+				pos.Cs--
+			case 'A', 'a':
+				pos.As--
+			case 'T', 't':
+				pos.Ts--
 			}
+			/*
+				if b == 'G' || b == 'g' {
+					pos.Gs--
+				} else if b == 'C' || b == 'c' {
+					pos.Cs--
+				} else if b == 'A' || b == 'a' {
+					pos.As--
+				} else if b == 'T' || b == 't' {
+					pos.Ts--
+				}
+			*/
 		}
 		for _, b := range f.mmap[position(idx, pos.lastEnd):position(idx, pos.End)] {
-			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
-				pos.lastCount++
+			switch b {
+			case 'G', 'g':
+				pos.Gs++
+			case 'C', 'c':
+				pos.Cs++
+			case 'A', 'a':
+				pos.As++
+			case 'T', 't':
+				pos.Ts++
 			}
 		}
 
 	}
 	pos.lastStart = pos.Start
 	pos.lastEnd = pos.End
-	return pos.lastCount, nil
+	return pos.Gs + pos.Cs, nil
 }
 
 // At takes a single point and returns the single base.
