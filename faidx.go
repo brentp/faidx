@@ -154,12 +154,12 @@ type GcPosition struct {
 	lastChrom string
 	lastStart int
 	lastEnd   int
-	lastCount int
+	lastCount uint32
 }
 
 // GC gets only the count of GC GC-content it can do the calculation quickly for
 // repeated calls marching to higher bases along the genome.
-func (f *Faidx) GC(pos *GcPosition) (int, error) {
+func (f *Faidx) GC(pos *GcPosition) (uint32, error) {
 	// we can't use any info from the cache
 	idx, ok := f.Index[pos.Chrom]
 	if !ok {
@@ -169,8 +169,8 @@ func (f *Faidx) GC(pos *GcPosition) (int, error) {
 	if pos.lastStart > pos.Start || pos.Start >= pos.lastEnd || pos.lastEnd > pos.End || pos.Chrom != pos.lastChrom {
 		pos.lastChrom = pos.Chrom
 		pos.lastCount = 0
-		for i := position(idx, pos.Start); i < position(idx, pos.End); i++ {
-			if b := f.mmap[i]; b == 'G' || b == 'C' || b == 'c' || b == 'g' {
+		for _, b := range f.mmap[position(idx, pos.Start):position(idx, pos.End)] {
+			if b == 'G' || b == 'C' || b == 'c' || b == 'g' {
 				pos.lastCount++
 			}
 		}
