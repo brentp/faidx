@@ -167,27 +167,22 @@ type FaPos struct {
 // which populates the base-counts.
 func (p *FaPos) Duplicity() float32 {
 	n := float64(p.As + p.Cs + p.Gs + p.Ts)
+	if n == 0 {
+		return 0
+	}
 	var s float64
-	k := 0
 
 	if p.As > 0 {
 		s = float64(p.As) / n * math.Log(float64(p.As)/n)
-		k++
 	}
 	if p.Cs > 0 {
 		s += float64(p.Cs) / n * math.Log(float64(p.Cs)/n)
-		k++
 	}
 	if p.Gs > 0 {
 		s += float64(p.Gs) / n * math.Log(float64(p.Gs)/n)
-		k++
 	}
 	if p.Ts > 0 {
 		s += float64(p.Ts) / n * math.Log(float64(p.Ts)/n)
-		k++
-	}
-	if k == 0 {
-		return 0
 	}
 	if s == 0 {
 		return 1.0
