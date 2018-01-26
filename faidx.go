@@ -65,16 +65,26 @@ func position(r fai.Record, p int) int64 {
 
 // Get takes a position and returns the string sequence. Start and end are 0-based.
 func (f *Faidx) Get(chrom string, start int, end int) (string, error) {
+
+	buf, err := f.GetRaw(chrom, start, end)
+	if err != nil {
+		return "", err
+	}
+	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
+	return string(buf), nil
+}
+
+// GetRaw takes a position and returns the string sequence that includes the newlines.
+// Start and end are 0-based.
+func (f *Faidx) GetRaw(chrom string, start int, end int) ([]byte, error) {
 	idx, ok := f.Index[chrom]
 	if !ok {
-		return "", fmt.Errorf("unknown sequence %s", chrom)
+		return nil, fmt.Errorf("unknown sequence %s", chrom)
 	}
 
 	pstart := position(idx, start)
 	pend := position(idx, end)
-	buf := f.mmap[pstart:pend]
-	buf = bytes.Replace(buf, []byte{'\n'}, []byte{}, -1)
-	return string(buf), nil
+	return f.mmap[pstart:pend], nil
 }
 
 // Stats hold sequenc information.
