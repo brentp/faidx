@@ -8,7 +8,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/biogo/biogo/io/seqio/fai"
+	"github.com/biogo/hts/fai"
 	"github.com/edsrzf/mmap-go"
 )
 
